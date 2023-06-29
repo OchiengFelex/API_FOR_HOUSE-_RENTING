@@ -21,7 +21,7 @@ export const getSingleBookings = async (req, res) => {
     const result = await pool
       .request()
       .input("id", sql.Int, id)
-      .query("select * from Bookings WHERE booking_id=@id");
+      .query("select * from bookings WHERE booking_id=@id");
     res.status(200).json(result.recordset[0]);
   } catch (error) {
     res.status(500).json(error.message);
@@ -34,7 +34,7 @@ export const deleteBooking = async (req, res) => {
   try {
     const { id } = req.params;
     await sql.connect(config.sql);
-    await sql.query(`DELETE FROM Bookings WHERE booking_id = ${id} `);
+    await sql.query(`DELETE FROM bookings WHERE booking_id = ${id} `);
     res.status(200).json({ message: "Deleted booking successfully " });
   } catch (error) {
     res.status(500).json(error.message);
@@ -45,26 +45,28 @@ export const deleteBooking = async (req, res) => {
 
 export const createBookings = async (req, res) => {
   try {
-    const { booking_id, property_id, user_id, check_in_date, check_out_date } =
-      req.body;
+    const { property_name, location, username } = req.body;
 
-    // if (!user_id) {
-    //   throw new Error("Missing 'user_id' property in request body");
-    //}
     let pool = await sql.connect(config.sql);
+    const userExists = await pool
+      .request()
+      .input("username", sql.VarChar, username)
+      .query("SELECT * FROM Users WHERE username = @username");
+
+    if (userExists.recordset.length === 0) {
+      throw new Error("User with the provided username does not exist.");
+    }
+
     await pool
       .request()
-      .input("user_id", sql.Int, user_id)
-      .input("booking_id", sql.Int, booking_id)
-      .input("property_id", sql.Int, property_id)
-      .input("check_in_date", sql.Date, check_in_date)
-      .input("check_out_date", sql.Date, check_out_date)
-
+      .input("property_name", sql.VarChar, property_name)
+      .input("location", sql.VarChar, location)
+      .input("username", sql.VarChar, username)
       .query(
-        "INSERT INTO Bookings (booking_id, property_id, user_id, check_in_date, check_out_date) VALUES(@user_id, @booking_id, @property_id, @check_in_date, @check_out_date) "
+        "INSERT INTO bookings (property_name, location, username) VALUES (@property_name, @location, @username)"
       );
 
-    res.status(200).json("created successfully");
+    res.status(200).json("Booking done successfully");
   } catch (error) {
     res.status(500).json(error.message);
   } finally {
